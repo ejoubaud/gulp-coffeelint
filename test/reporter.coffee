@@ -19,6 +19,18 @@ ERR_MSG =
         'is not a valid reporter'
 
 describe 'gulp-coffeelint', ->
+    beforeEach ->
+        # reset statistics
+        countReporterCalls = 0
+        countFileNames = []
+        countResults = []
+
+        stub = sinon.stub reporter_module, 'reporter', ->
+            'I am a mocking bird'
+
+    afterEach ->
+        reporter_module.reporter.restore()
+
     describe 'coffeelint.reporter', ->
         it 'throws when passed invalid reporter type', (done) ->
             try
@@ -29,17 +41,6 @@ describe 'gulp-coffeelint', ->
                 done()
 
     describe 'coffeelint.reporter \'default\'', ->
-        beforeEach ->
-            # reset statistics
-            countReporterCalls = 0
-            countFileNames = []
-            countResults = []
-
-            stub = sinon.stub reporter_module, 'reporter', ->
-                'I am a mocking bird'
-        afterEach ->
-            reporter_module.reporter.restore()
-
         it 'should pass through a file', (done) ->
             dataCounter = 0
 
@@ -193,8 +194,6 @@ describe 'gulp-coffeelint', ->
 
             stream.once 'end', ->
                 dataCounter.should.equal 2
-                stub.calledOnce.should.equal true
-                (should stub.firstCall.args).eql ['file2.js', [bugs: 'many']]
                 errorCounter.should.equal 1
                 done()
 
