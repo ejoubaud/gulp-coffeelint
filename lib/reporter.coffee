@@ -30,9 +30,23 @@ failReporter = ->
             createPluginError "CoffeeLint failed for #{file.relative}"
         cb()
 
+failOnWarningReporter = ->
+    through2.obj (file, enc, cb) ->
+        c = file.coffeelint
+        # nothing to report or no errors AND no warnings
+        if not c or c.errorCount is c.warningCount is 0
+            @push file
+            return cb()
+
+        # fail
+        @emit 'error',
+            createPluginError "CoffeeLint failed for #{file.relative}"
+        cb()
+
 reporter = (type = 'default') ->
     return defaultReporter() if type is 'default'
     return failReporter() if type is 'fail'
+    return failOnWarningReporter() if type is 'failOnWarning'
 
     # Otherwise
     throw createPluginError "#{type} is not a valid reporter"
