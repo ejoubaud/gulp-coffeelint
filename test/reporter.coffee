@@ -208,3 +208,115 @@ describe 'gulp-coffeelint', ->
             stream.write fakeFile
             stream.end()
 
+    describe 'coffeelint.reporter \'failOnWarning\'', ->
+
+        it 'should pass through an okay file', (done) ->
+            dataCounter = 0
+
+            fakeFile = new gutil.File
+                path: './test/fixture/file.js',
+                cwd: './test/',
+                base: './test/fixture/',
+                contents: new Buffer 'sure()'
+
+            stream = coffeelint.reporter 'failOnWarning'
+
+            stream.on 'data', (newFile) ->
+                should.exist(newFile)
+                should.exist(newFile.path)
+                should.exist(newFile.relative)
+                should.exist(newFile.contents)
+                newFile.path.should.equal './test/fixture/file.js'
+                newFile.relative.should.equal 'file.js'
+                ++dataCounter
+
+
+            stream.once 'end', ->
+                dataCounter.should.equal 1
+                done()
+
+            stream.write fakeFile
+            stream.end()
+
+        it 'should not pass thourgh a bad file', (done) ->
+            dataCounter = 0
+
+            fakeFile = new gutil.File
+                path: './test/fixture/file.js',
+                cwd: './test/',
+                base: './test/fixture/',
+                contents: new Buffer 'sure()'
+
+            fakeFile.coffeelint =
+                warningCount: 0,
+                errorCount: 1,
+                results: [bugs: 'some']
+
+            stream = coffeelint.reporter 'failOnWarning'
+
+            stream.on 'data', (newFile) ->
+                should.exist(newFile)
+                should.exist(newFile.path)
+                should.exist(newFile.relative)
+                should.exist(newFile.contents)
+                newFile.path.should.equal './test/fixture/file.js'
+                newFile.relative.should.equal 'file.js'
+                ++dataCounter
+
+            stream.on 'error', ->
+                # prevent stream from throwing
+
+            stream.once 'end', ->
+                dataCounter.should.equal 0
+                done()
+
+            stream.write fakeFile
+            stream.end()
+
+        it 'emits error if `file.coffeelint.warningCount!==0`', (done) ->
+            dataCounter = 0
+            errorCounter = 0
+
+            fakeFile = new gutil.File
+                path: './test/fixture/file.js',
+                cwd: './test/',
+                base: './test/fixture/',
+                contents: new Buffer 'success()'
+
+            fakeFile.coffeelint =
+                success: true,
+                warningCount: 0,
+                errorCount: 0
+
+            fakeFile2 = new gutil.File
+                path: './test/fixture/file2.js',
+                cwd: './test/',
+                base: './test/fixture/',
+                contents: new Buffer 'yeahmetoo()'
+
+            fakeFile2.coffeelint =
+                warningCount: 1,
+                errorCount: 0,
+                results: [bugs: 'kinda']
+
+            stream = coffeelint.reporter 'failOnWarning'
+
+            stream.on 'data', (newFile) ->
+                ++dataCounter
+
+            stream.once 'end', ->
+                dataCounter.should.equal 2
+                errorCounter.should.equal 1
+                done()
+
+            stream.on 'error', (e) ->
+                ++errorCounter
+                should.exist e
+                e.should.have.property 'message'
+                e.message.should.equal 'CoffeeLint failed for file2.js'
+
+            stream.write fakeFile
+            stream.write fakeFile2
+            stream.write fakeFile
+            stream.end()
+
