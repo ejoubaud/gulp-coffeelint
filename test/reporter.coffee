@@ -61,7 +61,6 @@ describe 'gulp-coffeelint', ->
                 newFile.relative.should.equal 'file.js'
                 ++dataCounter
 
-
             stream.once 'end', ->
                 dataCounter.should.equal 1
                 done()
@@ -69,7 +68,7 @@ describe 'gulp-coffeelint', ->
             stream.write fakeFile
             stream.end()
 
-        it 'only calls reporter if `file.coffeelint.success===false', (done) ->
+        it 'calls reporter if warnings', (done) ->
             dataCounter = 0
 
             fakeFile = new gutil.File
@@ -78,7 +77,10 @@ describe 'gulp-coffeelint', ->
                 base: './test/fixture/',
                 contents: new Buffer 'success()'
 
-            fakeFile.coffeelint = success: true
+            fakeFile.coffeelint =
+                success: true,
+                warningCount: 0,
+                errorCount: 0
 
             fakeFile2 = new gutil.File
                 path: './test/fixture/file2.js',
@@ -86,8 +88,11 @@ describe 'gulp-coffeelint', ->
                 base: './test/fixture/',
                 contents: new Buffer 'yeahmetoo()'
 
-            fakeFile2.coffeelint = success: false, results: [bugs: 'many']
-
+            fakeFile2.coffeelint =
+                success: true,
+                warningCount: 2,
+                errorCount: 0,
+                results: [bugs: 'kinda']
 
             stream = coffeelint.reporter()
 
@@ -97,7 +102,48 @@ describe 'gulp-coffeelint', ->
             stream.once 'end', ->
                 dataCounter.should.equal 2
                 stub.calledOnce.should.equal true
-                (should stub.firstCall.args).eql ['file2.js', [bugs: 'many']]
+                (should stub.firstCall.args).eql ['file2.js', [bugs: 'kinda']]
+                done()
+
+            stream.write fakeFile
+            stream.write fakeFile2
+            stream.end()
+
+        it 'calls reporter if errors', (done) ->
+            dataCounter = 0
+
+            fakeFile = new gutil.File
+                path: './test/fixture/file.js',
+                cwd: './test/',
+                base: './test/fixture/',
+                contents: new Buffer 'success()'
+
+            fakeFile.coffeelint =
+                success: true,
+                warningCount: 0,
+                errorCount: 2,
+                results: [bugs: 'some']
+
+            fakeFile2 = new gutil.File
+                path: './test/fixture/file2.js',
+                cwd: './test/',
+                base: './test/fixture/',
+                contents: new Buffer 'yeahmetoo()'
+
+            fakeFile2.coffeelint =
+                success: true,
+                warningCount: 0,
+                errorCount: 0,
+
+            stream = coffeelint.reporter()
+
+            stream.on 'data', (newFile) ->
+                ++dataCounter
+
+            stream.once 'end', ->
+                dataCounter.should.equal 2
+                stub.calledOnce.should.equal true
+                (should stub.firstCall.args).eql ['file.js', [bugs: 'some']]
                 done()
 
             stream.write fakeFile

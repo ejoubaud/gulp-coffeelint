@@ -6,8 +6,9 @@ stylish = require 'coffeelint-stylish'
 
 defaultReporter = ->
     through2.obj (file, enc, cb) ->
-        # nothing to report or no errors
-        if not file.coffeelint or file.coffeelint.success
+        c = file.coffeelint
+        # nothing to report or no errors AND no warnings
+        if not c or c.errorCount is c.warningCount is 0
             @push file
             return cb()
 
